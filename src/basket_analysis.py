@@ -36,11 +36,18 @@ BASKET_SQL = """
 """
 
 
-def load_category_baskets(conn: sqlite3.Connection) -> pd.Series:
-    """Items with no category translation (~1.4%) are dropped."""
+def load_category_baskets(conn: sqlite3.Connection, merge_gap_hours: float = None) -> pd.Series:
+    """Items with no category translation (~1.4%) are dropped.
+    merge_gap_hours: if set, orders within this many hours of each other
+    (same customer) are merged into one shopping-trip basket before
+    counting — see src/data_prep.py. Orders not covered by the trip map
+    (e.g. non-delivered) keep their own order_id unchanged."""
     df = pd.read_sql_query(BASKET_SQL, conn)
+    if merge_gap_hours is not None:
+        from src.data_prep import get_order_to_trip_map
+        trip_map = get_order_to_trip_map(conn, gap_hours=merge_gap_hours)
+        df["order_id"] = df["order_id"].map(trip_map).fillna(df["order_id"])
     return df.groupby("order_id")["category"].agg(frozenset)
-
 
 def basket_coverage(conn: sqlite3.Connection, baskets: pd.Series) -> dict:
     """The numbers that justify the scoping decision — show these in the demo."""
