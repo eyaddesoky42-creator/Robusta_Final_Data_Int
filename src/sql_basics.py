@@ -31,12 +31,12 @@ def get_orders_with_items(conn: sqlite3.Connection) -> pd.DataFrame:
     """)
 
 
-def get_orders_per_customer(conn: sqlite3.Connection) -> pd.DataFrame:
-    """GROUP BY + aggregates."""
+def get_orders_per_customer(conn):
     return run_query(conn, """
-        SELECT customer_id, COUNT(order_id) AS total_orders
-        FROM orders
-        GROUP BY customer_id
+        SELECT c.customer_unique_id, COUNT(o.order_id) AS total_orders
+        FROM orders o
+        JOIN customers c ON o.customer_id = c.customer_id
+        GROUP BY c.customer_unique_id
         ORDER BY total_orders DESC
         LIMIT 10;
     """)
