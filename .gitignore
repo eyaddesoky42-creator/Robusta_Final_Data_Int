@@ -1,0 +1,7 @@
+data/
+olist.db
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.env
+*.env
