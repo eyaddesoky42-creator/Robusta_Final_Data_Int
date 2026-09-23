@@ -5,9 +5,11 @@ Task 4 — Natural-language "chat with your data" via a LangChain SQL agent.
 Requires GOOGLE_API_KEY set as an environment variable.
 """
 import os
+from dotenv import load_dotenv
 from langchain_community.utilities import SQLDatabase
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.agent_toolkits import create_sql_agent
+load_dotenv()
 
 DB_PATH = "olist.db"
 MODEL_NAME = "gemini-3.1-flash-lite"  # confirmed working — gemini-1.5-flash is deprecated (404)
