@@ -1,0 +1,7 @@
+segment,customers,avg_order_value,baseline_p0,discount,break_even_uplift,net_per_customer_low,net_per_customer_base,net_per_customer_high,total_net_low,total_net_base,total_net_high,recommendation,status,code_prefix
+Champions,844,152.88,0.0381,0.1,0.0381,-0.5067,-0.3538,-0.1245,-427.644,-298.6126,-105.0654,do not discount,not_recommended,VIP10
+Loyal repeat,1201,110.47,0.0141,0.1,0.0141,-0.1002,0.0103,0.176,-120.3265,12.3485,211.3611,send as A/B test,pending_approval,LOYAL10
+High-value new,21683,261.73,0.0054,0.1,0.0054,-0.0108,0.2509,0.6435,-234.2692,5440.8992,13953.6518,send as A/B test,pending_approval,SECOND10
+At-risk high-value,14061,277.35,0.0048,0.15,0.0145,-0.1312,0.0075,0.2155,-1845.0767,104.8543,3029.7507,send as A/B test,pending_approval,COMEBACK15
+Recent one-timers,32880,55.54,0.0059,0.1,0.0059,-0.0052,0.0503,0.1336,-171.3927,1654.8284,4394.1599,send as A/B test,pending_approval,NEXT10
+Lapsed one-timers,22689,55.85,0.0041,0.15,0.0123,-0.0204,0.0075,0.0494,-462.4314,171.1131,1121.4298,send as A/B test,pending_approval,WINBACK15
