@@ -6,8 +6,18 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-load_dotenv()
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+load_dotenv()  # local dev: reads .env. On Streamlit Cloud there is no .env,
+                # so also fall back to st.secrets (set in the app's Secrets panel).
+                # try/except: st.secrets raises if no secrets.toml exists at all
+                # (the normal case for local dev), rather than just returning empty.
+if "GOOGLE_API_KEY" not in os.environ:
+    try:
+        if "GOOGLE_API_KEY" in st.secrets:
+            os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+    except Exception:
+        pass
 
 from src.data_loader import get_connection
 from src.eda import (
@@ -23,14 +33,36 @@ st.set_page_config(page_title="Project 9 — Order Intelligence", layout="wide")
 # --------------------------------------------------------------------------
 # Cached resources / data — safe to recompute automatically, never mutated
 # --------------------------------------------------------------------------
+def _is_valid_sqlite(path: str) -> bool:
+    """os.path.exists() alone isn't enough: a committed placeholder, a Git LFS
+    pointer file, or a partially-written build can all exist as a file while
+    holding no real database. Check the real SQLite file header."""
+    try:
+        if os.path.getsize(path) < 100:
+            return False
+        with open(path, "rb") as f:
+            return f.read(16) == b"SQLite format 3\x00"
+    except OSError:
+        return False
+
+
 @st.cache_resource
 def get_db_connection():
-    if not os.path.exists("olist.db"):
-        st.error(
-            "olist.db not found. Run notebooks/Data_Loading_Intro_SQL.ipynb "
-            "first to build the database, then restart this app."
-        )
-        st.stop()
+    # Rebuild whenever olist.db is missing OR present-but-invalid (e.g. a
+    # Git LFS pointer stub, an empty placeholder, or a half-written build).
+    if not os.path.exists("olist.db") or not _is_valid_sqlite("olist.db"):
+        if not os.path.isdir("data"):
+            st.error(
+                "olist.db is missing or invalid, and data/ is missing too, so it "
+                "can't be rebuilt. Make sure the data/ folder (the 9 Olist CSVs) "
+                "is present in the repo."
+            )
+            st.stop()
+        with st.spinner("olist.db missing or invalid — rebuilding from data/ ..."):
+            if os.path.exists("olist.db"):
+                os.remove("olist.db")  # clear the bad file before rebuilding
+            from src.data_loader import load_data_to_sql
+            load_data_to_sql()
     return get_connection()
 
 
