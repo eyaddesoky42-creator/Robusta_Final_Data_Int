@@ -5,7 +5,8 @@ import sys
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
-
+from dotenv import load_dotenv
+load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.data_loader import get_connection
