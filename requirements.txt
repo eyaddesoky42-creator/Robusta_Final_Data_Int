@@ -9,3 +9,4 @@ langchain-google-genai
 jupyter
 nbformat
 python-dotenv
+streamlit
