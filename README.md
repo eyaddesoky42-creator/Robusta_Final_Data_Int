@@ -1,210 +1,124 @@
 # Project 9 — Data Intelligence over Orders
-### Robusta AI Internship 2026
 
-An intelligence layer built on top of e-commerce order data: order
-analytics, a recommendation engine, and a margin-aware promo generator.
+**Robusta AI Internship 2026 — Month 2 Project**
 
----
+An intelligence layer over Olist's historical e-commerce orders: analytics, a
+recommendation engine, and a promo-code generator with margin logic — built
+honestly, with every claim backed by a measured number or clearly flagged as
+an assumption.
 
-## Project Description
-
-Robusta's internal order data sits unused as raw transactional history.
-This project turns it into three usable outputs:
-
-1. **An analytics layer** over order history — basket composition,
-   repeat-purchase behavior, and reorder timing per customer.
-2. **A recommendation engine** — "frequently bought together" and
-   "next-order" suggestions, evaluated offline against a popularity
-   baseline.
-3. **A promo-code generator** — targeted offers per customer segment
-   with expected margin impact stated explicitly, for human
-   approval rather than autonomous issuance.
+**Live demo:** _[paste your Streamlit Community Cloud URL here]_
 
 ---
 
-## Dataset
+## 1. What this project does
 
-### Comparison: Instacart vs. Olist
+1. **Analytics layer** — basket composition, repeat-purchase behaviour, reorder
+   timing per customer.
+2. **Recommendation engine** — "frequently bought together" and "next order"
+   suggestions, evaluated against a popularity baseline with statistical
+   confidence, honest about where the lift is small.
+3. **Promo-code generator** — targeted offers per customer segment with
+   expected margin impact, for human approval — nothing is issued automatically.
 
-| Factor | Instacart | Olist (chosen) |
-|---|---|---|
-| Scale | ~3.4M orders, 200K+ users | ~100K orders, 2016–2018 |
-| Native reorder flag | Yes | No — derived via `customer_unique_id` |
-| Price / payment data | None | Yes — order value, freight, payment method |
-| Structure | 6 CSVs | 9 relational CSVs |
-| Fit for promo/margin deliverable | Weak — no price data | Moderate — real prices enable real margin estimates |
+## 2. Dataset
 
-**Decision: Olist.** It's the only dataset that reasonably supports
-**all three** deliverables — Instacart is stronger for recommendations
-alone, but has zero price data, which would leave the promo/margin
-deliverable built on fully simulated numbers. Olist's multi-seller,
-marketplace structure is also more representative of the kind of
-client platforms a software development company like Robusta
-typically builds.
+[Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) —
+~99k orders, 2016–2018, 9 relational CSVs (customers, orders, order items,
+payments, reviews, products, sellers, geolocation, category translations).
 
-Source: https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce
+## 3. Architecture
 
-### Schema — 9 relational tables
+```
+SQL (SQLite)         →  data storage, filtering, joins, aggregation
+Pandas / NumPy        →  modeling layer: recommenders, RFM, promo maths
+scikit-learn          →  KMeans cross-check, evaluation metrics
+LangChain + Gemini    →  natural-language "chat with your data"
+Streamlit             →  the app you're looking at
+```
 
-| File | Contents |
-|---|---|
-| `olist_customers_dataset.csv` | Customer IDs, unique customer ID (tracks repeat buyers), location |
-| `olist_orders_dataset.csv` | Order status, purchase timestamp, delivery dates |
-| `olist_order_items_dataset.csv` | Product + seller per order, price, freight value |
-| `olist_order_payments_dataset.csv` | Payment type, installments, payment value |
-| `olist_order_reviews_dataset.csv` | Review scores, comments |
-| `olist_products_dataset.csv` | Product category, weight, dimensions |
-| `olist_sellers_dataset.csv` | Seller location |
-| `olist_geolocation_dataset.csv` | Zip code → lat/lng mapping |
-| `product_category_name_translation.csv` | Portuguese → English category names |
-
-**Note:** Olist has no native reorder flag — repeat-purchase behavior
-is derived by joining on `customer_unique_id` across orders (see
-`src/sql_basics.py::get_repeat_customers`).
-
----
-
-## Tech Stack
-
-| Tool | Role |
-|---|---|
-| **SQLite** | Data storage, filtering, joins, aggregation |
-| **Pandas / NumPy** | Numerical computation, matrix operations |
-| **Matplotlib** | EDA visualizations |
-| **mlxtend** | Market basket analysis (Apriori, association rules) |
-| **scikit-learn** | Recommendation evaluation, clustering |
-| **LangChain + Gemini** | Natural-language SQL querying |
-| **FastAPI / Streamlit** *(planned)* | Final packaging and UI |
-
-**Architectural principle:** SQL owns the data layer (storage,
-filtering, joining, aggregating); Python/Pandas owns the modeling
-layer (ML, statistics, business logic). This mirrors how these
-systems are architected in production.
-
----
-
-## Project Structure
+All logic lives in `src/`; notebooks in `Jupyters/` are thin wrappers that
+import and call it, so nothing is duplicated between the two.
 
 ```
 project9/
-├── data/                            # raw CSVs (gitignored)
-├── olist.db                         # SQLite database (gitignored)
-├── src/
-│   ├── data_loader.py               # Task 1 — load CSVs into SQLite
-│   ├── sql_basics.py                # Task 2 — core SQL query functions
-│   ├── eda.py                       # Task 3 — EDA functions
-│   └── chat_agent.py                # Task 4 — LangChain SQL agent
-├── notebooks/
-│   ├── Data_Loading_Intro_SQL.ipynb # Tasks 1-2
-│   ├── Task3_Data_Exploration.ipynb
-│   └── Task4_chatting_with_data.ipynb
-├── reports/                         # saved charts, findings
+├── app.py                  # Streamlit app (6 tabs — see Section 5)
+├── src/                     # all logic: data_loader, eda, basket_analysis,
+│                             #   recommender, segmentation, promo_generator,
+│                             #   chat_agent, narratives, data_prep
+├── Jupyters/                # one notebook per task, thin wrappers over src/
+├── data/                    # 9 Olist CSVs (source of truth)
+├── reports/                 # generated charts, offer proposals
+├── .env                     # GOOGLE_API_KEY (gitignored, never committed)
 ├── requirements.txt
-├── .gitignore
-└── README.md
+└── railway.json / (n/a)     # not needed on Streamlit Community Cloud
 ```
 
-Notebooks are kept intentionally — they're used for interactive
-exploration and verification — but contain minimal logic themselves;
-all real logic lives in `src/` as reusable, importable functions.
+`olist.db` is **not** committed — the app builds it automatically from `data/`
+on first run (see `get_db_connection()` in `app.py`).
 
----
+## 4. Task-by-task summary
 
-## Task Log
+| Task | What it does | Headline finding |
+|---|---|---|
+| 1–2 | Load CSVs into SQLite, core SQL | Fixed a bug grouping by `customer_id` (unique per order) instead of `customer_unique_id` |
+| 3 | EDA | ~10% of orders have 2+ items; raw repeat rate ~3% |
+| 4 | Chat with your data (LangChain + Gemini) | Secured API key via `.env` after an earlier hardcoding incident |
+| 5 | Market basket analysis | Only 1.02% of orders span 2+ categories; rules mined on those only |
+| 6 | Recommendation engine + evaluation | Bought-together beats popularity (real lift); next-order beats popularity but a simple "rebuy the same category" rule matches the learned model |
+| 7 | RFM segmentation + KMeans cross-check | One-time high spenders are 38% of customers, 72% of revenue — the second purchase is the main lever |
+| 8 | Promo generator with margin logic | Champions shouldn't be discounted; other segments proposed as A/B tests, not blanket sends |
+| 9 | LLM narrative layer | Segment/offer descriptions grounded strictly in the numbers from Tasks 7–8 |
+| 10 | Streamlit app | Six tabs, one per capability |
+| 11 | Evaluation write-up | Full honest accounting of what worked, what didn't, and why |
+| 12 | Deployment | Streamlit Community Cloud (after a Railway detour — see Section 7) |
 
-### ✅ Task 1 — Data Loading
-`src/data_loader.py` reads all 9 Olist CSVs and loads them into a
-single SQLite database (`olist.db`). Verified by querying
-`sqlite_master` to confirm all 9 tables exist.
+## 5. The app's six tabs
 
-### ✅ Task 2 — Core SQL Techniques
-`src/sql_basics.py` implements and demonstrates:
-- `SELECT` / `WHERE` — filtering to delivered orders only
-- `JOIN` — connecting `orders` and `order_items`
-- `GROUP BY` + aggregates — orders per customer
-- Multi-table `JOIN` + aggregate — revenue by category
-- Subquery / `HAVING` — deriving repeat customers (no native reorder flag in Olist)
-- Date functions (`julianday`) — customer activity span, feeds into RFM later
+1. **EDA** — basket sizes, category volume, repeat-purchase rate, revenue concentration.
+2. **Chat** — ask plain-English questions about the order data.
+3. **Segments** — RFM table, six named segments, KMeans cross-check.
+4. **Recommendations** — frequently-bought-together and next-order models, live evaluation.
+5. **Promo Generator** — proposed offers, margin sensitivity, approve → export codes.
+6. **Narratives** — LLM-written plain-language descriptions of segments and offers.
 
-### ✅ Task 3 — Exploratory Data Analysis (EDA)
-`src/eda.py` covers:
-- Basket size distribution
-- Top categories by volume
-- Repeat-purchase rate
-- Reorder timing (gap between repeat orders)
-- Customer lifetime value
-- Revenue concentration (80/20 check — do top customers drive most revenue?)
+## 6. A data-quality decision worth knowing about
 
-Charts are saved to `reports/`.
+About 27% of the gaps between a customer's consecutive orders were under one
+hour — almost certainly split checkouts, not real repeat purchases. `src/data_prep.py`
+merges orders within a 1-hour window into a single "shopping trip" before any
+task counts repeat behaviour. This is applied consistently across Tasks 5–8.
 
-### ✅ Task 4 — Natural-Language Data Query (Chat With Your Data)
-
-`src/chat_agent.py` implements a LangChain SQL agent that answers
-plain-English questions about the order data.
-
-**Why LangChain instead of a single open-source chat-with-data agent:**
-
-We evaluated open-source alternatives for this task but chose
-LangChain's SQL agent for two practical reasons:
-
-1. **Multi-file/relational data support** — our data spans 9
-   relational CSV files. Several open-source "chat with your data"
-   agents are built around single-file or single-document inputs and
-   don't handle multi-table relational joins well out of the box.
-2. **Database-agent reliability** — open-source agents built
-   specifically for database querying were either not free to use at
-   the quality needed, or had reliability issues (inconsistent SQL
-   generation, poor error handling) in testing.
-
-LangChain's SQL agent connects directly to `olist.db`, understands the
-full relational schema, and generates correct multi-table SQL queries
-from natural-language questions.
-
-**Example:**
-> **Q:** "Which product category has the highest total revenue?"
-> **A:** The agent generates and runs the appropriate JOIN + GROUP BY
-> SQL query against `olist.db` and returns the answer in plain English.
-
-**Setup:** requires a Gemini API key set as the `GOOGLE_API_KEY`
-environment variable. Model used: **`gemini-3.1-flash-lite`**
-(`gemini-1.5-flash` was deprecated and returns a 404 as of 2026).
-
-**Scope note:** this is a single-turn natural-language-to-SQL query
-tool, not a multi-turn conversational chatbot — each question is
-answered independently with no memory of prior questions.
-
----
-
-## Upcoming Tasks
-
-| Task | Goal |
-|---|---|
-| Task 5 | Market basket analysis — Apriori / association rules |
-| Task 6 | Recommendation engine + evaluation vs. popularity baseline |
-| Task 7 | Customer segmentation via RFM |
-| Task 8 | Promo generator with margin impact |
-| Task 9 | LLM-generated plain-language segment/promo narratives |
-| Task 10 | Streamlit UI / FastAPI packaging |
-| Task 11 | Evaluation write-up |
-| Task 12 | Publish |
-
----
-
-## Setup
+## 7. Running it yourself
 
 ```bash
 pip install -r requirements.txt
+streamlit run app.py
 ```
 
-Download the Olist dataset from
-https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce and place
-the 9 CSVs in a `data/` folder in the project root.
-
-Set your Gemini API key (required for Task 4):
-```bash
-# Windows PowerShell
-setx GOOGLE_API_KEY "your-key-here"
+Requires a `.env` file in the project root:
+```
+GOOGLE_API_KEY=your-key-here
 ```
 
-Run `notebooks/Data_Loading_Intro_SQL.ipynb` first to build the
-database, then proceed through the other notebooks in order.
+`olist.db` builds itself from `data/` on first run — no manual step needed.
+
+## 8. Deployment note
+
+This app is deployed on **Streamlit Community Cloud**, not Railway. Railway's
+build system (Railpack) doesn't auto-detect how to start a Streamlit app the
+way Streamlit Cloud does natively, which cost real debugging time before
+switching. If you fork this repo and want to redeploy, Streamlit Community
+Cloud requires no start-command configuration at all — just point it at
+`app.py` and add `GOOGLE_API_KEY` under the app's Secrets.
+
+## 9. Known limitations (stated plainly, not hidden)
+
+- Next-order prediction adds little over "customers rebuy the same category" —
+  reported as a negative result, not spun as a win.
+- Predicting a *new* category a customer hasn't bought before shows **no**
+  measurable lift over popularity, most likely due to sample size (~2,000
+  repeat customers).
+- Promo margin (20%) and uplift assumptions are not in Olist's data — isolated
+  in one `Assumptions` class and shown as low/base/high scenarios, not a
+  single confident number.
