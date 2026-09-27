@@ -7,7 +7,7 @@ recommendation engine, and a promo-code generator with margin logic — built
 honestly, with every claim backed by a measured number or clearly flagged as
 an assumption.
 
-**Live demo:** _[paste your Streamlit Community Cloud URL here]_
+**Live demo:** (https://robustafinaldataint-cgqqfkq6c3wxuapufod6no.streamlit.app/)
 
 ---
 
